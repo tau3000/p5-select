@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ja" lang="ja">
+<head>
+<meta charset="utf-8" />
+
+<title>select.pl - SQLによるCSVファイル処理ツール</title>
+
+<style type="text/css">
+div.section {
+    margin: 0em 2em;
+}
+body {
+    line-height: 120%;
+    background-color: white;
+}
+h1 {
+    font-size: x-large;
+    background-color: #fa0;
+    color: white;
+    margin-bottom: 10px;
+    padding: 8px;
+    line-height: 100%;
+}
+h2 {
+    font-size: large;
+    padding: 4px 0px 4px 10px;
+    border-style: solid;
+    border-color: #fa0;
+    border-width: 1px 1px 1px 8px;
+}
+h3 {
+    font-size: medium;
+    background-color: #ffd;
+    border-style: dashed;
+    border-color: #fa0;
+    border-width: 1px;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    padding: 4px;
+}
+pre {
+    font-family: monospace;
+    white-space: -moz-pre-wrap;
+    white-space: -pre-wrap;
+    white-space: -o-pre-wrap;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow: auto;
+    border-style: solid;
+    border-color: #fa0;
+    background-color: #ffe;
+    border-width: 1px;
+    margin: 1em 2em 1em 2em;
+    padding: 1em 1em 1em 1em;
+}         
+em {
+   font-style: normal;
+   color: #c00;
+}
+li {
+   margin: 4px 0em;
+}
+hr {
+    color: #fa0;
+    background-color: transparent;
+    margin-top: 0.5em;
+}
+table {
+    font-size: normal;
+    margin: 1em 2em;
+    color: black;
+    border-style: solid;
+    border-spacing: 0px;
+    border: 0px;
+    cellspacing: 0px;
+    cellpadding: 5px;
+}
+tr {
+   border-style: solid;
+   border-color: #fa0;
+}
+td {
+    border-style: solid;
+    border-color: #fa0;
+    background-color: #ffe;
+    border-width: 0px 0px 1px 0px;
+    color: black;
+    padding: 0.2em;
+}
+th {
+    color: black;
+    text-align: left;
+    border-style: solid;
+    border-width: 1px 0px;
+    border-color: #fa0;
+    background-color: #ffd;
+    padding: 0.2em;
+}
+ul {
+  font-weight: normal;
+  list-style: disc;
+}
+ul.level1 {
+  font-weight: bold;
+  list-style: none;
+  margin-left: 0;
+  padding-left: 0;
+}
+</style>
+</head>
+
+<body>
+<!--  タイトル -->
+<div class="title">
+<h1>select.pl - SQLによるCSVファイル処理ツール</h1>
+</div>
+<!--  ページの内容 -->
+<div class="section">
+
+<h2>select.plとは</h2>
+<p>
+select.plは、CSVファイルを入力とし、SQLのSELECT文を実行後、
+その結果をふたたびCSV形式で出力する機能をもつPerlスクリプトです。
+</p>
+
+<h2>特徴と制限事項</h2>
+<ul class="level1">
+<li>結合(FROM句)
+  <ul>
+  <li>CSVファイルを何個でも結合可能
+  <li>内部結合のうち、結合条件を指定しないクロス結合、およびカラム値を等式で結んだ結合条件による等結合に対応
+  <li>外部結合（右外部結合、左外部結合、完全外部結合）に対応
+  </ul>
+<li>ソート(ORDER BY句)
+<ul>
+  <li>複数のカラム値をソートのキーとして指定可能
+  <li>ソート時にカラム型を自動判別（CSVファイルの先頭10行から判別）
+  <li>[制限事項] ソートのキーには集約関数またはカラム値のみ指定可能
+</ul>
+<li>グループ化(GROUP BY句)
+  <ul>
+  <li>複数のカラム値をグループ化のキーとして指定可能
+  <li>HAVING句によるグループ化後のレコード選択が可能
+  <li>集約関数COUNT(), MAX(), MIN(), SUM(), AVG()を出力カラム名、HAVING句、ORDER BY句に利用可能
+  <li>[制限事項] グループ化キーにはカラム値のみ指定可能
+  </ul>
+<li>カラム名の指定
+  <ul>
+  <li>CSVファイルの1行目の見出しの値をカラム名として利用可能
+  <li>1行目の見出しのないCSVファイルも読み込み可能(カラム名は#1,#2,...となる)
+  </ul>
+</ul>
+
+<h2>動作環境</h2>
+<p>以下の環境で動作を確認しています。
+<ul>
+<li>Windows XP SP2 with ActivePerl 5.8.8</li>
+<li>Fedora Core 4 (Linux kernel 2.6.11) with Perl 5.8.6</li>
+<li>Mac OS X 10.4.8 with Perl 5.8.6</li>
+</ul>
+</p>
+
+<h2>使用方法</h2>
+
+<p>
+以下の2種類の方法でSELECT文を指定することができます。
+<ol>
+<li>SELECT文を記述したファイルを引数に指定
+<p>SELECT文が記述されたファイルを読み込んで実行します。</p>
+<li>-eオプションでSELECT文を指定
+<p>-eオプションの直後に指定されたSELECT文を実行します。</p>
+</ol>
+<ul>
+<li>over80.sqlの内容
+<pre>
+SELECT * FROM 成績.csv WHERE #2 > 80
+SELECT * FROM 成績2.csv WHERE #2 > 80
+</pre>
+<li>overt80.sqlを引数に指定
+<pre>
+% select.pl over80.sql
+</pre>
+</ul>
+</p>
+
+<p>
+<ul>
+<li>-eオプションでSELECT文を指定
+<pre>
+% select.pl -e 'SELECT * FROM 成績.csv WHERE #2 > 80'
+</pre>
+</ul>
+</p>
+
+<p>-e以外に利用可能なオプションは以下の通りです。</p>
+<pre>
+-e SELECT文    指定されたSELECT文を実行する
+-H, --heading  すべてのCSVファイルの入出力を見出しつきで実行する
+-v, --version  バージョンを表示する
+-h, --help     使用方法を表示する
+</pre>
+
+<p>入出力に使われる文字コードはselect.plの文字コードと同じです。
+たとえばWindows版ではシフトJISとなります。</p>
+
+<h2>SELECT文の文法</h2>
+
+<p>
+SELECT文は必ず SELECT で始めます。SELECTの直後の出力カラムとFROM句は必須、WHERE, GROUP BY, HAVING, ORDER BY句はオプションです。
+</p>
+
+<pre>
+SELECT カラム名 [,カラム名...]
+FROM CSVファイル名 [,CSVファイル名...]
+[TO CSVファイル名]
+[WHERE 条件式]
+[GROUP BY カラム名 [,カラム名...] [HAVING 条件式]]
+[ORDER BY カラム名 [,カラム名...] ]
+</pre>
+
+<p>
+SELECT, FROMなどは大文字でも小文字でもかまいません。
+また、後述する演算子（EQ, GT, LTなど）も大文字でも小文字でもかまいません。
+</p>
+
+<h3>出力カラム</h3>
+
+<p>
+出力するカラムの内容を、SELECT の直後にカラム名などをカンマで区切って指定します。
+</p>
+
+<p>
+入力CSVファイルの特定のカラムを指定するには、# の後ろにカラム番号をつけます。
+たとえば2番目のカラムは #2 となります。
+* を指定すると、すべてのテーブルのすべてのカラムの値が出力されます。
+
+<ul>
+<li>成績.csvの内容
+<pre>
+0001,72,80,68
+0002,90,71,84
+0003,75,77,91
+0004,80,65,73
+</pre>
+<li>1,4番目のカラムを出力
+<pre>
+% select.pl -e 'SELECT <em>#1, #4</em> FROM 成績.csv'
+0001,68
+0002,84
+0003,91
+0004,73
+</pre>
+<li>「*」を指定して全カラムを出力
+<pre>
+% select.pl -e 'SELECT <em>*</em> FROM 成績.csv'
+0001,72,80,68
+0002,90,71,84
+0003,75,77,91
+0004,80,65,73
+</pre>
+</ul>
+</p>
+
+<p>
+-Hオプションを指定すると、CSVファイルの1行目をカラム名リストとして扱い、出力カラムやWHERE句などのカラム名に利用することができます。
+<ul>
+<li>生徒.csvの内容
+<pre>
+ID,名前
+0001,鈴木太郎
+0003,田中次郎
+0004,高橋史郎
+0005,佐藤吾郎
+</pre>
+<li>「名前」カラムを出力
+<pre>
+% select.pl -H -e 'SELECT 名前 FROM 生徒.csv'
+名前
+鈴木太郎
+田中次郎
+高橋史郎
+佐藤吾郎
+</pre>
+</ul>
+</p>
+
+<p>
+FROM句の各CSVファイル名の直後、あるいは出力カラムの末尾に HEADING を個別に指定することにより、カラム名の指定に利用したり、出力の1行目にカラム名を出力したりすることができます。出力カラムの末尾にHEADINGを指定し、FROM句のCSVファイルの後ろに HEADING を指定しなかった場合、#1, #2 などがカラム名として出力されます。
+<ul>
+<li>FROM句のCSVファイルにのみ HEADING を指定するとカラム名は出力されない
+<pre>
+% select.pl -e 'SELECT 名前 FROM 生徒.csv <em>HEADING</em>'
+鈴木太郎
+田中次郎
+高橋史郎
+佐藤吾郎
+</pre>
+<li>出力カラムの直後にのみ HEADING を指定すると#1, #2 などがカラム名として出力される
+<pre>
+% select.pl -e 'SELECT * <em>HEADING</em> FROM 成績.csv'
+#1,#2,#3,#4
+0001,72,80,68
+0002,90,71,84
+0003,75,77,91
+0004,80,65,73
+</pre>
+</ul>
+</p>
+
+<p>
+出力カラムにはこのほかに、FROM句に入力CSVファイルを複数指定した場合のテーブル名の指定や、GROUP BY句を使った場合の集約関数の指定が可能です（後述）。
+</p>
+
+<h3>FROM句</h3>
+<p>
+FROM句には、入力となるCSVファイル名を指定します。複数のCSVファイルを結合することもできます。
+</p>
+
+<p>
+CSVファイルを2個以上指定した場合、テーブル名とピリオド「.」に続けてカラム名を記述することにより、カラムのテーブルを明示的に指定できます。テーブル名を指定する方法には以下の3種類があります。
+<ol>
+<li>#の後ろにテーブル番号（2個目のテーブルなら#2）
+<pre>
+% select.pl -e 'SELECT #1, #2, <em>#2.</em>#2 FROM 成績.csv, 生徒.csv WHERE #1 eq <em>#2.</em>#1'
+</pre>
+<li>入力CSVファイル名から拡張子(.csv)を取り除いたもの
+<pre>
+% select.pl -e 'SELECT #1, #2, <em>生徒.</em>#2 FROM 成績.csv, 生徒.csv WHERE #1 eq <em>生徒.</em>#1'
+</pre>
+<li>入力CSVファイル名の直後に「as テーブル名」として指定したテーブル名
+<pre>
+% select.pl -e 'SELECT #1, #2, <em>名前.</em>#2 FROM 成績.csv, 生徒.csv <em>AS 名前</em> WHERE #1 eq <em>名前.</em>#1'
+</pre>
+</ol>
+</p>
+
+<p>
+カラム名のテーブルを明示的に指定せず、かつそのカラム名が複数のテーブルに存在する場合は、そのカラム名をもつ最初のテーブルのものとみなされます。
+</p>
+
+<p>
+結合は、クロス結合、等結合、外部結合の3種類に対応しています。
+</p>
+<ol>
+<li>クロス結合
+<p>
+各テーブルのカラムを結びつける結合条件を指定せず、すべてのレコードどうしを掛け合わせます。1個のテーブルのカラムに関する条件を指定した場合は、その条件に適合するレコードについてのみ掛け合わされます。
+<ul>
+<li>成績.csvの内容
+<pre>
+ID,算数,国語,社会
+0001,72,80,68
+0002,90,71,84
+0003,75,77,91
+0004,80,65,73
+</pre>
+<li>生徒.csvの内容
+<pre>
+ID,名前
+0001,鈴木太郎
+0003,田中次郎
+0004,高橋史郎
+0005,佐藤吾郎
+</pre>
+<li>すべてのレコードをクロス結合
+<pre>
+% select.pl -H -e 'SELECT * FROM 成績.csv, 生徒.csv'
+ID,算数,国語,社会,ID,名前
+0001,72,80,68,0001,鈴木太郎
+0001,72,80,68,0003,田中次郎
+0001,72,80,68,0004,高橋史郎
+0001,72,80,68,0005,佐藤吾郎
+0002,90,71,84,0001,鈴木太郎
+0002,90,71,84,0003,田中次郎
+0002,90,71,84,0004,高橋史郎
+0002,90,71,84,0005,佐藤吾郎
+0003,75,77,91,0001,鈴木太郎
+0003,75,77,91,0003,田中次郎
+0003,75,77,91,0004,高橋史郎
+0003,75,77,91,0005,佐藤吾郎
+0004,80,65,73,0001,鈴木太郎
+0004,80,65,73,0003,田中次郎
+0004,80,65,73,0004,高橋史郎
+0004,80,65,73,0005,佐藤吾郎
+</pre>
+<li>成績.csvの「算数」カラムが75以上のレコードを選択後、クロス結合
+<pre>
+% select.pl -H -e 'SELECT * FROM 成績.csv, 生徒.csv WHERE 算数 >= 75'
+ID,算数,国語,社会,ID,名前
+0002,90,71,84,0001,鈴木太郎
+0002,90,71,84,0003,田中次郎
+0002,90,71,84,0004,高橋史郎
+0002,90,71,84,0005,佐藤吾郎
+0003,75,77,91,0001,鈴木太郎
+0003,75,77,91,0003,田中次郎
+0003,75,77,91,0004,高橋史郎
+0003,75,77,91,0005,佐藤吾郎
+0004,80,65,73,0001,鈴木太郎
+0004,80,65,73,0003,田中次郎
+0004,80,65,73,0004,高橋史郎
+0004,80,65,73,0005,佐藤吾郎
+</pre>
+</ul>
+</p>
+<li>等結合
+<p>
+各テーブルのカラム値を演算子==またはeqで結びつけた等式の結合条件によって結合します。各等式中には必ず1個目のテーブルのカラムを含む必要があります。
+1個のテーブルのカラムに関する条件も指定した場合は、その条件に適合するレコードを選択したあと結合します。条件式の順番はどちらでもかまいません。
+<ul>
+<li>2個のテーブルの「ID」カラムで等結合
+<pre>
+% select.pl -H -e 'SELECT ID, 名前, 算数 FROM 成績.csv, 生徒.csv <em>WHERE ID eq 生徒.ID</em>'
+ID,名前,算数
+0001,鈴木太郎,72
+0003,田中次郎,75
+0004,高橋史郎,80
+</pre>
+<li>成績.csvの「算数」カラムが75以上のレコードを選択後、2個のテーブルの「ID」カラムで等結合
+<pre>
+% select.pl -H -e 'SELECT ID, 名前, 算数 FROM 成績.csv, 生徒.csv <em>WHERE ID eq 生徒.</em>ID and 算数 >= 75</em>'
+ID,名前,算数
+0003,田中次郎,75
+0004,高橋史郎,80
+</pre>
+<li>3個のテーブルを結合するSQLの例
+<pre>
+SELECT 売上ID, 店舗ID, 店舗名, 商品ID, 商品名, 販売数 FROM 売上.csv, 店舗.csv, 商品.csv <em>WHERE 店舗ID eq 店舗.店舗ID and 商品ID eq 商品.商品ID</em>'
+</pre>
+<li>2個目と3個目のテーブルのカラムを結びつける等式を使うとエラー
+<pre>
+SELECT 売上ID, 店舗ID, 店舗名, 商品ID, 商品名, 販売数 FROM 店舗.csv, 売上.csv, 商品.csv WHERE 店舗ID eq 売上.店舗ID and <em>商品ID eq 商品.商品ID</em>'
+</pre>
+</p>
+</ul>
+<li>外部結合
+<p>
+等結合を実行する際、結合条件のカラム名の直後に (+) を指定すると、結合条件に一致しないレコードも出力されます。存在しないレコードのカラムは空文字列が出力されます。左外部結合、右外部結合、完全外部結合の3種類の結合方法があります。
+<ul>
+<li>左外部結合
+<pre>
+% select.pl -H -e 'SELECT ID, 名前, 算数 FROM 成績.csv, 生徒.csv <em>WHERE ID (+) eq 生徒.ID</em>'
+ID,名前,算数
+0001,鈴木太郎,72
+0002,,90
+0003,田中次郎,75
+0004,高橋史郎,80
+</pre>
+<li>右外部結合
+<pre>
+% select.pl -H -e 'SELECT ID, 名前, 算数 FROM 成績.csv, 生徒.csv <em>WHERE ID eq 生徒.ID (+)</em>'
+ID,名前,算数
+0001,鈴木太郎,72
+0003,田中次郎,75
+0004,高橋史郎,80
+,佐藤吾郎,
+</pre>
+<li>完全外部結合
+<pre>
+% select.pl -H -e 'SELECT ID, 名前, 算数 FROM 成績.csv, 生徒.csv <em>WHERE ID (+) eq 生徒.ID (+)</em>'
+ID,名前,算数
+0001,鈴木太郎,72
+0002,,90
+0003,田中次郎,75
+0004,高橋史郎,80
+,佐藤吾郎,
+</pre>
+</ul>
+</ol>
+</p>
+
+<h3>WHERE句</h3>
+<p>
+入力CSVファイルのレコードの選択条件を指定できます。
+</p>
+<p>
+比較演算子はPerlと同じ記法のEQ, NE, GE, GT, LE, LT, ==, !=, &lt;, &gt;, &lt;=, &gt;=が使用できます。また、論理演算子にはAND, OR, NOTが使用できます。
+</p>
+<p>
+文字列は "" または '' で囲んでください。
+<pre>
+% select.pl -e 'SELECT * FROM 成績.csv WHERE #2 > 80'
+% select.pl -e 'SELECT * FROM 成績.csv WHERE #2 > 80 <em>OR</em> #1 EQ "鈴木太郎"'
+% select.pl -e 'SELECT * FROM 成績.csv WHERE #2 > 80 <em>AND</em> #3 > 80'
+</pre>
+</p>
+
+<h3>GROUP BY句</h3>
+<p>
+集約関数として、COUNT(*), MAX(カラム名), MIN(カラム名), SUM(カラム名), AVG(カラム名)を使用できます。
+<pre>
+% select.pl -e 'SELECT #1 FROM master.csv GROUP BY #1'
+% select.pl -e 'SELECT #1, #2 FROM master.csv GROUP BY #1,#2'
+% select.pl -e 'SELECT COUNT(*) FROM master.csv GROUP BY #1'
+% select.pl -e 'SELECT #1, AVG(#2), MAX(#3) FROM master.csv GROUP BY #1'
+</pre>
+</p>
+
+<h3>HAVING句</h3>
+<p>
+GROUP BY句によるグループ化を行った後のレコードの選択条件を指定できます。選択条件中に集約関数を使用できます。
+<pre>
+% select.pl -e 'SELECT #1, MAX(#3) FROM master.csv GROUP BY #1 HAVING #1 EQ "Mike"'
+% select.pl -e 'SELECT #1, AVG(#3) FROM master.csv GROUP BY #1 HAVING AVG(#3) > 49'
+</pre>
+</p>
+
+<h3>ORDER BY句</h3>
+<p>
+レコードのソート条件を指定できます。
+<pre>
+% select.pl -e 'SELECT * FROM master.csv ORDER BY #2'
+% select.pl -e 'SELECT * FROM master.csv ORDER BY #3 DESC'
+% select.pl -e 'select * FROM master.csv ORDER BY #3 DESC, #1'
+</pre>
+</p>
+
+</div>
+<div class="footer">
+<hr />
+Akira Kitauchi / <a href="https://twitter.com/tau3000">@tau3000</a>
+</div>
+</body>
+</html>
